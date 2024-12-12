@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enhanced Personal Finance Tracker</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1231.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { 
+            font-family: Arial, sans-serif; 
+            background-color: #f4f4f4; 
+            margin: 0; 
+            padding: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            height: 100vh; 
+        }
+        .container { 
+            width: 400px; 
+            margin: 20px; 
+            background: #fff; 
+            padding: 30px; 
+            border-radius: 8px; 
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1); 
+            transition: transform 0.3s ease; 
+        }
+        .container:hover {
+            transform: scale(1.02);
+        }
+        h2 { 
+            text-align: center; 
+            margin-bottom: 20px; 
+            color: #3498db; 
+        }
+        .balance { 
+            text-align: center; 
+            font-size: 24px; 
+            margin-bottom: 20px; 
+            color: #333; 
+        }
+        .income-expense { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 20px; 
+        }
+        .income, .expense { 
+            width: 45%; 
+            padding: 10px; 
+            border-radius: 5px; 
+            color: #fff; 
+            text-align: center; 
+        }
+        .income { background-color: #2ecc71; } 
+        .expense { background-color: #e74c3c; }
+        form { 
+            display: flex; 
+            flex-direction: column; 
+            margin-bottom: 20px; 
+        }
+        form input, form select { 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 4px; 
+            transition: border-color 0.3s;
+        }
+        form input:focus, form select:focus {
+            border-color: #3498db;
+            outline: none;
+        }
+        form button { 
+            padding: 10px; 
+            border: none; 
+            background-color: #3498db; 
+            color: #fff; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            transition: background-color 0.3s; 
+        }
+        form button:hover { 
+            background-color: #2980b9; 
+        }
+        ul { 
+            list-style: none; 
+            padding: 0; 
+        }
+        ul li { 
+            background: #f9f9f9; 
+            padding: 10px; 
+            margin-bottom: 10px; 
+            border-left: 5px solid #3498db; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            transition: background-color 0.3s; 
+        }
+        ul li:hover { 
+            background-color: #f1f1f1; 
+        }
+        ul li.income { border-left-color: #2ecc71; } 
+        ul li.expense { border-left-color: #e74c3c; }
+        ul li button { 
+            background: none; 
+            border: none; 
+            color: #e74c3c; 
+            cursor: pointer; 
+            font-size: 16px; 
+        } 
+        ul li button:hover { 
+            color: #c0392b; 
+        }
+        .chart-container { 
+            text-align: center; 
+            margin-top: 20px; 
+        }
+        #tracker-container, #signup-container { 
+            display: none; 
+        }
+        .footer { 
+            text-align: center; 
+            margin-top: 10px; 
+        }
+        .footer button { 
+            background: none; 
+            border: none; 
+            color: #3498db; 
+            cursor: pointer; 
+            font-size: 14px; 
+        }
+        .footer button:hover { 
+            text-decoration: underline; 
+        }
+    </style>
+</head>
+
+<body>
+
+<!-- Login -->
+<div class="container" id="login-container">
+    <h2>Login</h2>
+    <form id="login-form">
+        <input type="text" id="username" placeholder="Username" required>
+        <input type="password" id="password" placeholder="Password" required>
+        <button type="submit">Login</button>
+    </form>
+    <p>Don't have an account? <button onclick="showSignup()">Sign Up</button></p>
+</div>
+
+<!-- Signup -->
+<div class="container" id="signup-container" style="display: none;">
+    <h2>Sign Up</h2>
+    <form id="signup-form">
+        <input type="text" id="new-username" placeholder="Username" required>
+        <input type="password" id="new-password" placeholder="Password" required>
+        <button type="submit">Sign Up</button>
+    </form>
+    <p>Already have an account? <button onclick="showLogin()">Login</button></p>
+</div>
+
+<!-- Personal Finance Tracker -->
+<div class="container" id="tracker-container" style="display: none;">
+    <h2>Personal Finance Tracker</h2>
+	<p>Welcome, <span id="welcome-username" name="welcome-username"></span>!</p>
+	
+    <div>
+        Balance: $<span id="balance">0.00</span>
+        Income: $<span id="income">0.00</span>
+        Expense: $<span id="expense">0.00</span>
+		<h2>______________________________</h2>
+    </div>
+
+    <form id="transaction-form">
+	<input type="text" id="description" name= "description" placeholder="Transaction Description" required>
+	<input type="number" id="amount" name="amount" placeholder="Amount" required>
+    <div name="toggle">
+        <input type="radio" id="income-radio" name="transaction-type" value="income" required>
+        <label for="income-radio">Income</label>
+        <input type="radio" id="expense-radio" name="transaction-type" value="expense">
+        <label for="expense-radio">Expense</label>
+    </div>
+    <select id="category", name="category">
+        <option value="">Select Category</option>
+        <option value="Salary">Salary</option>
+        <option value="Food">Food</option>
+        <option value="Transport">Transport</option>
+        <option value="Entertainment">Entertainment</option>
+        <option value="Other">Other</option>
+    </select>
+    <button type="submit">Add Transaction</button>
+	</form>
+
+
+    <ul id="transaction-list"></ul>
+
+    <div class="chart-container">
+        <canvas id="transaction-chart" width="400" height="400"></canvas>
+    </div>
+
+    <button onclick="logout()">Logout</button>
+</div>
+
+<script>
+    let transactions = JSON.parse(localStorage.getItem('transactions')) || [];
+    let loggedInUser = JSON.parse(localStorage.getItem('loggedInUser'));
+    let chart;
+	
+	
+    function updateDOM() {
+    const balanceEl = document.getElementById('balance');
+    const incomeEl = document.getElementById('income');
+    const expenseEl = document.getElementById('expense');
+    const transactionList = document.getElementById('transaction-list');
+
+    transactionList.innerHTML = '';
+    let total = 0, income = 0, expense = 0;
+
+    transactions.forEach((transaction, index) => {
+        const item = document.createElement('li');
+        item.classList.add(transaction.amount >= 0 ? 'income' : 'expense');
+        item.innerHTML = `${transaction.description} - ${transaction.category} <span>$${Math.abs(transaction.amount).toFixed(2)}</span>
+            <button onclick="deleteTransaction(${index})">&times;</button>`;
+        transactionList.appendChild(item);
+
+        total += transaction.amount;
+        transaction.amount >= 0 ? income += transaction.amount : expense += transaction.amount;
+    });
+
+    balanceEl.textContent = total.toFixed(2);
+    incomeEl.textContent = income.toFixed(2);
+    expenseEl.textContent = Math.abs(expense).toFixed(2);
+
+    const savings = income - Math.abs(expense);
+
+    if (chart) chart.destroy();
+    chart = new Chart(document.getElementById('transaction-chart').getContext('2d'), {
+        type: 'pie',
+        data: {
+            labels: ['Savings', 'Expense'],
+            datasets: [{
+                data: [savings, Math.abs(expense)],
+                backgroundColor: ['#2ecc71', '#e74c3c']
+            }]
+        }
+    });
+}
+
+document.getElementById('transaction-form').addEventListener('submit', addTransaction);
+
+
+    function addTransaction(e) {
+    e.preventDefault();
+
+    const description = document.getElementById('description').value;
+    const amount = parseFloat(document.getElementById('amount').value);
+    const transactionType = document.querySelector('input[name="transaction-type"]:checked').value;
+    const category = document.getElementById('category').value;
+
+    if (category && !isNaN(amount) && transactionType) {
+        // Adjust the amount based on transaction type
+        const adjustedAmount = transactionType === 'income' ? amount : -amount;
+
+        transactions.push({ description, amount: adjustedAmount, category });
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        updateDOM();
+        document.getElementById('transaction-form').reset();
+    }
+	}
+
+    function deleteTransaction(index) {
+        transactions.splice(index, 1);
+        localStorage.setItem('transactions', JSON.stringify(transactions));
+        updateDOM();
+    }
+
+    function logout() {
+        localStorage.removeItem('loggedInUser');
+        showLogin();
+    }
+
+    function showLogin() {
+        document.getElementById('login-container').style.display = 'block';
+        document.getElementById('signup-container').style.display = 'none';
+        document.getElementById('tracker-container').style.display = 'none';
+    }
+
+    function showSignup() {
+        document.getElementById('signup-container').style.display = 'block';
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('tracker-container').style.display = 'none';
+    }
+
+    document.getElementById('login-form').addEventListener('submit', (e) => {
+		e.preventDefault();
+
+		const users = JSON.parse(localStorage.getItem('users')) || [];
+		const username = document.getElementById('username').value;
+		const password = document.getElementById('password').value;
+
+		const user = users.find(user => user.username === username && user.password === password);
+
+		if (user) {
+			localStorage.setItem('loggedInUser', JSON.stringify(user));
+			showTracker(username);
+		} else {
+			alert('Invalid Username or Password');
+		}
+	});
+
+    document.getElementById('signup-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const newUsername = document.getElementById('new-username').value;
+        const newPassword = document.getElementById('new-password').value;
+        const users = JSON.parse(localStorage.getItem('users')) || [];
+
+        if (users.find(user => user.username === newUsername)) {
+            alert('Username already exists');
+        } else {
+            users.push({ username: newUsername, password: newPassword });
+            localStorage.setItem('users', JSON.stringify(users));
+            alert('Signup Successful');
+            showLogin();
+        }
+    });
+
+    function showTracker(username) {
+        document.getElementById('tracker-container').style.display = 'block';
+        document.getElementById('login-container').style.display = 'none';
+        document.getElementById('signup-container').style.display = 'none';
+		document.getElementById("welcome-username").textContent = username;
+        updateDOM();
+    }
+
+    document.getElementById('transaction-form').addEventListener('submit', addTransaction);
+</script>
+
+
+</body>
+</html>
